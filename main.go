@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"screensaver-ad-backend/config"
 	"screensaver-ad-backend/internal/controllers"
@@ -11,9 +13,21 @@ import (
 	"screensaver-ad-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env only in development environment
+	env := os.Getenv("GO_ENV")
+	env = strings.ToLower(env)
+    if env == "development" || env == "dev" {
+        if err := godotenv.Load(); err != nil {
+            log.Printf("Warning: Error loading .env file: %v", err)
+        } else {
+            log.Println(".env file loaded for development environment")
+        }
+    }
+
 	// Initialize database
 	if err := config.InitDatabase(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
