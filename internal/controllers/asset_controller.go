@@ -141,7 +141,8 @@ func (c *AssetController) UpdateAssetStatus(ctx *gin.Context) {
 	}
 
 	var request struct {
-		Status models.AssetStatus `json:"status" binding:"required"`
+		Status      models.AssetStatus `json:"status" binding:"required"`
+		OutputS3Key *string            `json:"output_s3_key,omitempty"`
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -149,7 +150,7 @@ func (c *AssetController) UpdateAssetStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.UpdateAssetStatus(uint(id), request.Status); err != nil {
+	if err := c.service.UpdateAssetStatus(uint(id), request.Status, request.OutputS3Key); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -178,15 +179,16 @@ func (c *AssetController) GetAssetURL(ctx *gin.Context) {
 	// Get expiration from query parameter (default 60 minutes)
 	expiration, _ := strconv.Atoi(ctx.DefaultQuery("expiration", "60"))
 
-	// Generate presigned URL
-	url, err := c.service.GetAssetURL(uint(id), expiration)
+	// Generate presigned URLs for both input and output files
+	urls, err := c.service.GetAssetURLs(uint(id), expiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"url":        url,
+		"input_url":  urls.InputURL,
+		"output_url": urls.OutputURL,
 		"expires_in": expiration,
 	})
 }

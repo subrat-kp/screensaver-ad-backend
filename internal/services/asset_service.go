@@ -68,21 +68,35 @@ func (s *AssetService) CreateAssetWithUpload(file multipart.File, fileHeader *mu
 	return asset, nil
 }
 
-// UpdateAssetStatus updates the status of an asset
-func (s *AssetService) UpdateAssetStatus(id uint, status models.AssetStatus) error {
+// UpdateAssetStatus updates the status of an asset and optionally sets the output S3 key
+func (s *AssetService) UpdateAssetStatus(id uint, status models.AssetStatus, outputS3Key *string) error {
 	// Validate status
 	if status != models.AssetStatusUploaded && status != models.AssetStatusProcessed {
 		return fmt.Errorf("invalid status: must be 'uploaded' or 'processed'")
 	}
 
-	// Check if asset exists
-	_, err := s.repo.GetByID(id)
+	// Get asset
+	asset, err := s.repo.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("asset not found")
 	}
 
 	// Update status
-	return s.repo.UpdateStatus(id, status)
+	asset.Status = status
+
+	// If status is processed, set processed_at timestamp and output_s3_key
+	if status == models.AssetStatusProcessed {
+		now := time.Now()
+		asset.ProcessedAt = &now
+
+		// Set output S3 key if provided
+		if outputS3Key != nil && *outputS3Key != "" {
+			asset.OutputS3Key = outputS3Key
+		}
+	}
+
+	// Update asset
+	return s.repo.Update(asset)
 }
 
 // isValidContentType checks if the content type is valid (image or video)
@@ -132,12 +146,18 @@ func (s *AssetService) GetAssetCount() (int64, error) {
 	return s.repo.Count()
 }
 
-// GetAssetURL generates a presigned URL for accessing an asset
-func (s *AssetService) GetAssetURL(id uint, expirationMinutes int) (string, error) {
+// AssetURLs holds both input and output presigned URLs
+type AssetURLs struct {
+	InputURL  string  `json:"input_url"`
+	OutputURL *string `json:"output_url,omitempty"`
+}
+
+// GetAssetURLs generates presigned URLs for both input and output files
+func (s *AssetService) GetAssetURLs(id uint, expirationMinutes int) (*AssetURLs, error) {
 	// Get asset
 	asset, err := s.repo.GetByID(id)
 	if err != nil {
-		return "", fmt.Errorf("asset not found")
+		return nil, fmt.Errorf("asset not found")
 	}
 
 	// Default expiration to 60 minutes if not specified
@@ -145,11 +165,26 @@ func (s *AssetService) GetAssetURL(id uint, expirationMinutes int) (string, erro
 		expirationMinutes = 60
 	}
 
-	// Generate presigned URL
-	url, err := s.s3Service.GetFileURL(asset.S3Key, time.Duration(expirationMinutes)*time.Minute)
+	expiration := time.Duration(expirationMinutes) * time.Minute
+
+	// Generate presigned URL for input file
+	inputURL, err := s.s3Service.GetFileURL(asset.S3Key, expiration)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate URL: %w", err)
+		return nil, fmt.Errorf("failed to generate input URL: %w", err)
 	}
 
-	return url, nil
+	urls := &AssetURLs{
+		InputURL: inputURL,
+	}
+
+	// Generate presigned URL for output file if it exists
+	if asset.OutputS3Key != nil && *asset.OutputS3Key != "" {
+		outputURL, err := s.s3Service.GetFileURL(*asset.OutputS3Key, expiration)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate output URL: %w", err)
+		}
+		urls.OutputURL = &outputURL
+	}
+
+	return urls, nil
 }
