@@ -1,27 +1,52 @@
 # Screensaver Ad Backend
 
-A Go backend service using the Gin framework for managing screensaver advertisements and creative assets with PostgreSQL database support.
+A Go backend service using the Gin framework for managing screensaver advertisements and creative assets with PostgreSQL database and AWS S3 storage integration.
 
 ## Features
 
 - RESTful API for creative asset management
-- PostgreSQL database integration for asset metadata persistence
-- File upload endpoint with S3 integration (placeholder)
-- Asset status tracking (processing/processed)
-- Automatic status checking via S3 processed output folder
-- Asset listing and retrieval
+- PostgreSQL database integration with GORM ORM
+- AWS S3 file upload and storage
+- Multipart form data handling for file uploads
+- Asset metadata persistence
+- Pagination support for asset listing
 - Health check endpoint with database status
 - CORS support for frontend integration
-- Backward compatibility with in-memory storage (fallback mode)
+- Environment-based configuration with .env support
 
 ## Tech Stack
 
-- **Go 1.21**
-- **Gin Web Framework**
-- **PostgreSQL** (for persistent asset metadata storage)
-- **AWS S3** (for file storage - to be configured)
-- **lib/pq** (PostgreSQL driver)
-- **AWS SDK for Go** (S3 integration)
+- **Go 1.23**
+- **Gin Web Framework** - HTTP web framework
+- **GORM** - ORM library for database operations
+- **PostgreSQL** - Relational database for asset metadata
+- **AWS SDK for Go** - S3 integration for file storage
+- **godotenv** - Environment variable management
+- **google/uuid** - UUID generation for unique file naming
+
+## Architecture
+
+```
+.
+├── config/
+│   ├── database.go      # Database configuration and initialization
+│   └── s3.go           # S3 client configuration
+├── internal/
+│   ├── controllers/
+│   │   └── asset_controller.go  # HTTP request handlers
+│   ├── models/
+│   │   └── asset.go            # Asset data model
+│   ├── repository/
+│   │   └── asset_repository.go # Database operations
+│   └── services/
+│       ├── asset_service.go    # Business logic
+│       └── s3_service.go       # S3 operations
+├── main.go             # Application entry point
+├── go.mod              # Go module dependencies
+├── .env.example        # Environment variables template
+├── Dockerfile          # Docker configuration
+└── README.md           # Project documentation
+```
 
 ## Database Setup
 
@@ -45,54 +70,57 @@ CREATE DATABASE screensaver_ad;
 
 ### 2. Database Schema
 
-The application automatically creates the `asset_metadata` table on startup with the following schema:
+The application automatically creates the `asset_metadata` table on startup using GORM migrations:
 
 ```sql
-CREATE TABLE IF NOT EXISTS asset_metadata (
-    id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(500) NOT NULL,
-    file_url TEXT NOT NULL,
-    content_type VARCHAR(100),
-    uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50) NOT NULL DEFAULT 'processing'
+CREATE TABLE asset_metadata (
+    id SERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    s3_key VARCHAR(500) NOT NULL UNIQUE,
+    s3_bucket VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'uploaded',
+    uploaded_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP
 );
 ```
 
 ### 3. Environment Variables
 
-Configure the following environment variables to connect to your PostgreSQL database:
+Create a `.env` file based on `.env.example`:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres
-export DB_PASSWORD=your_password
-export DB_NAME=screensaver_ad
+# Development environment flag
+GO_ENV=dev
 
-# AWS S3 Configuration (optional)
-export AWS_REGION=us-east-1
-export S3_BUCKET=your-bucket-name
-export S3_PROCESSED_FOLDER=processed/
+# DATABASE
+DB_HOST=your_host_url
+DB_PORT=your_db_server_port
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_NAME=your_db_name
+DB_SSLMODE=disable
+
+# AWS S3
+AWS_REGION=your_region
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_S3_BUCKET=your_s3_bucket_name
 ```
 
-### 4. Database Connection
+### 4. AWS S3 Setup
 
-The application connects to PostgreSQL using the environment variables. If the database is not available, it falls back to in-memory storage mode.
-
-**Connection String Format:**
-```
-host=<DB_HOST> port=<DB_PORT> user=<DB_USER> password=<DB_PASSWORD> dbname=<DB_NAME> sslmode=disable
-```
-
-### 5. Default Values
-
-If environment variables are not set, the following defaults are used:
-
-- `DB_HOST`: localhost
-- `DB_PORT`: 5432
-- `DB_USER`: postgres
-- `DB_PASSWORD`: postgres
-- `DB_NAME`: screensaver_ad
+1. Create an S3 bucket
+2. Create an `input/` folder inside the bucket
+3. Configure IAM user with S3 permissions:
+   - `s3:PutObject`
+   - `s3:GetObject`
+   - `s3:DeleteObject`
+4. Generate access keys for the IAM user
+5. Add credentials to `.env` file
 
 ## API Endpoints
 
@@ -102,40 +130,58 @@ If environment variables are not set, the following defaults are used:
 GET /health
 ```
 
-Returns the service health status, timestamp, and database connection status.
+Returns the service health status and database connection status.
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "timestamp": 1234567890,
   "database": "connected"
 }
 ```
 
-### Upload Creative
+### Create Asset with File Upload
 
 ```
-POST /api/upload
+POST /api/assets
 ```
 
-Upload a new creative asset (image/video). Creates a database record with status="processing".
+Upload a new creative asset (image or video) to S3 and create a database record.
 
 **Request:**
 - Content-Type: `multipart/form-data`
-- Body: `file` (file upload)
+- Fields:
+  - `file` (required): The image or video file to upload
+  - `name` (optional): Custom name for the asset (defaults to original filename)
+
+**Supported File Types:**
+- Images: JPEG, JPG, PNG, GIF, WebP
+- Videos: MP4, MPEG, QuickTime, AVI, WebM
+
+**Maximum File Size:** 32 MB
+
+**Example using curl:**
+```bash
+curl -X POST http://localhost:8080/api/assets \
+  -F "file=@/path/to/image.jpg" \
+  -F "name=my-creative-asset"
+```
 
 **Response:**
 ```json
 {
-  "message": "File uploaded successfully",
-  "creative": {
-    "id": "20231012150405",
-    "name": "example.jpg",
-    "file_url": "https://s3.amazonaws.com/placeholder/example.jpg",
+  "message": "Asset created successfully",
+  "asset": {
+    "id": 1,
+    "file_name": "my-creative-asset",
+    "file_size": 123456,
     "content_type": "image/jpeg",
-    "uploaded_at": "2023-10-12T15:04:05Z",
-    "status": "processing"
+    "s3_key": "input/my-creative-asset_a1b2c3d4.jpg",
+    "s3_bucket": "screensaver-creatives",
+    "status": "uploaded",
+    "uploaded_at": "2025-10-13T10:40:00Z",
+    "created_at": "2025-10-13T10:40:00Z",
+    "updated_at": "2025-10-13T10:40:00Z"
   }
 }
 ```
@@ -143,56 +189,161 @@ Upload a new creative asset (image/video). Creates a database record with status
 ### List All Assets
 
 ```
-GET /api/assets
+GET /api/assets?limit=10&offset=0
 ```
 
-Retrieve all creative assets from the database.
+Retrieve all creative assets from the database with pagination.
+
+**Query Parameters:**
+- `limit` (optional): Number of assets to return (default: 10, max: 100)
+- `offset` (optional): Number of assets to skip (default: 0)
 
 **Response:**
 ```json
 {
   "assets": [
     {
-      "id": "20231012150405",
-      "name": "example.jpg",
-      "file_url": "https://s3.amazonaws.com/placeholder/example.jpg",
+      "id": 1,
+      "file_name": "my-creative-asset",
+      "file_size": 123456,
       "content_type": "image/jpeg",
-      "uploaded_at": "2023-10-12T15:04:05Z",
-      "status": "processing"
+      "s3_key": "input/my-creative-asset_a1b2c3d4.jpg",
+      "s3_bucket": "screensaver-creatives",
+      "status": "uploaded",
+      "uploaded_at": "2025-10-13T10:40:00Z",
+      "created_at": "2025-10-13T10:40:00Z",
+      "updated_at": "2025-10-13T10:40:00Z"
     }
   ],
-  "count": 1
+  "total": 1,
+  "limit": 10,
+  "offset": 0
 }
 ```
 
-### Get Asset Status
+### Get Single Asset
 
 ```
-GET /api/assets/:id/status
+GET /api/assets/:id
 ```
 
-Get the current status of an asset. If status is "processing", checks S3 processed output folder and updates status to "processed" if file exists.
+Retrieve a specific asset by ID.
 
 **Response:**
 ```json
 {
-  "status": "processed",
-  "file_url": "https://s3.amazonaws.com/placeholder/example.jpg",
-  "message": "Asset example.jpg is processed"
+  "id": 1,
+  "file_name": "my-creative-asset",
+  "file_size": 123456,
+  "content_type": "image/jpeg",
+  "s3_key": "input/my-creative-asset_a1b2c3d4.jpg",
+  "s3_bucket": "screensaver-creatives",
+  "status": "uploaded",
+  "uploaded_at": "2025-10-13T10:40:00Z",
+  "created_at": "2025-10-13T10:40:00Z",
+  "updated_at": "2025-10-13T10:40:00Z"
 }
 ```
 
-**Status Values:**
-- `processing`: Asset is being processed
-- `processed`: Asset processing is complete and file is available in S3
+### Update Asset
+
+```
+PUT /api/assets/:id
+```
+
+Update an existing asset's metadata.
+
+**Request Body:**
+```json
+{
+  "file_name": "updated-name"
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "file_name": "updated-name",
+  "file_size": 123456,
+  "content_type": "image/jpeg",
+  "s3_key": "input/my-creative-asset_a1b2c3d4.jpg",
+  "s3_bucket": "screensaver-creatives",
+  "status": "uploaded",
+  "uploaded_at": "2025-10-13T10:40:00Z",
+  "created_at": "2025-10-13T10:40:00Z",
+  "updated_at": "2025-10-13T10:45:00Z"
+}
+```
+
+### Delete Asset
+
+```
+DELETE /api/assets/:id
+```
+
+Delete an asset from the database (soft delete).
+
+**Response:**
+```json
+{
+  "message": "Asset deleted successfully"
+}
+```
+
+### Update Asset Status
+
+```
+PATCH /api/assets/:id/status
+```
+
+Update the processing status of an asset.
+
+**Request Body:**
+```json
+{
+  "status": "processed"
+}
+```
+
+**Valid Status Values:**
+- `uploaded` - Asset has been uploaded to S3 (default status on creation)
+- `processed` - Asset has been processed and is ready for use
+
+**Example using curl:**
+```bash
+curl -X PATCH http://localhost:8080/api/assets/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status": "processed"}'
+```
+
+**Response:**
+```json
+{
+  "message": "Asset status updated successfully",
+  "asset": {
+    "id": 1,
+    "file_name": "my-creative-asset",
+    "file_size": 123456,
+    "content_type": "image/jpeg",
+    "s3_key": "input/my-creative-asset_a1b2c3d4.jpg",
+    "s3_bucket": "screensaver-creatives",
+    "status": "processed",
+    "uploaded_at": "2025-10-13T10:40:00Z",
+    "created_at": "2025-10-13T10:40:00Z",
+    "updated_at": "2025-10-13T11:50:00Z"
+  }
+}
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- PostgreSQL 12 or higher (optional, falls back to in-memory mode)
-- AWS credentials configured (for S3 integration)
+- Go 1.23 or higher
+- PostgreSQL 12 or higher
+- AWS account with S3 access
+- AWS credentials configured
 
 ### Installation
 
@@ -211,19 +362,26 @@ go mod download
 
 4. Configure environment variables:
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres
-export DB_PASSWORD=your_password
-export DB_NAME=screensaver_ad
+cp .env.example .env
+# Edit .env with your actual values
 ```
 
 5. Run the application:
 ```bash
-go run main.go
+GO_ENV=dev go run main.go
 ```
 
 The server will start on `http://localhost:8080`
+
+### Development Mode
+
+The application loads `.env` file only when `GO_ENV` is set to `dev` or `development`:
+
+```bash
+GO_ENV=dev go run main.go
+```
+
+For production, set environment variables directly without using `.env` file.
 
 ## Docker Support
 
@@ -233,7 +391,7 @@ The server will start on `http://localhost:8080`
 docker build -t screensaver-ad-backend .
 ```
 
-### Run with Docker Compose (with PostgreSQL)
+### Run with Docker Compose
 
 Create a `docker-compose.yml` file:
 
@@ -262,6 +420,11 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: screensaver_ad
+      DB_SSLMODE: disable
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: screensaver-creatives
     depends_on:
       - postgres
 
@@ -283,54 +446,13 @@ docker run -p 8080:8080 \
   -e DB_USER=postgres \
   -e DB_PASSWORD=your_password \
   -e DB_NAME=screensaver_ad \
+  -e DB_SSLMODE=disable \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_ACCESS_KEY_ID=your_key \
+  -e AWS_SECRET_ACCESS_KEY=your_secret \
+  -e AWS_S3_BUCKET=screensaver-creatives \
   screensaver-ad-backend
 ```
-
-## Development
-
-### Project Structure
-
-```
-.
-├── main.go          # Main application entry point
-├── go.mod           # Go module dependencies
-├── go.sum           # Go module checksums
-├── Dockerfile       # Docker configuration
-├── .gitignore       # Git ignore rules
-└── README.md        # Project documentation
-```
-
-### Database Schema Details
-
-**asset_metadata table:**
-- `id` (VARCHAR(255), PRIMARY KEY): Unique identifier for the asset
-- `name` (VARCHAR(500), NOT NULL): Original filename
-- `file_url` (TEXT, NOT NULL): S3 URL or storage location
-- `content_type` (VARCHAR(100)): MIME type of the file
-- `uploaded_at` (TIMESTAMP, NOT NULL): Upload timestamp
-- `status` (VARCHAR(50), NOT NULL, DEFAULT 'processing'): Current processing status
-
-### Features Implemented
-
-- ✅ PostgreSQL database integration
-- ✅ Asset metadata table with status tracking
-- ✅ Status endpoint with S3 processed output checking
-- ✅ Automatic status updates (processing → processed)
-- ✅ Backward compatibility with in-memory storage
-- ✅ Health check with database status
-
-### TODO
-
-- [ ] Implement actual AWS S3 file upload
-- [ ] Add file validation (size, type)
-- [ ] Implement authentication/authorization
-- [ ] Add unit tests
-- [ ] Add logging middleware
-- [ ] Implement rate limiting
-- [ ] Add pagination for asset listing
-- [ ] Create deployment scripts
-- [ ] Add database migrations
-- [ ] Implement soft delete functionality
 
 ## Configuration
 
@@ -338,44 +460,45 @@ docker run -p 8080:8080 \
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `DB_HOST` | PostgreSQL host | localhost | No |
-| `DB_PORT` | PostgreSQL port | 5432 | No |
-| `DB_USER` | Database username | postgres | No |
-| `DB_PASSWORD` | Database password | postgres | No |
-| `DB_NAME` | Database name | screensaver_ad | No |
-| `AWS_REGION` | AWS region for S3 | us-east-1 | Yes (for S3) |
-| `S3_BUCKET` | S3 bucket name | - | Yes (for S3) |
-| `S3_PROCESSED_FOLDER` | S3 processed output folder | processed/ | No |
+| `GO_ENV` | Environment mode (dev/production) | - | No |
+| `DB_HOST` | PostgreSQL host | localhost | Yes |
+| `DB_PORT` | PostgreSQL port | 5432 | Yes |
+| `DB_USER` | Database username | postgres | Yes |
+| `DB_PASSWORD` | Database password | - | Yes |
+| `DB_NAME` | Database name | screensaver_ad | Yes |
+| `DB_SSLMODE` | SSL mode (disable/require) | disable | No |
+| `AWS_REGION` | AWS region for S3 | - | Yes |
+| `AWS_ACCESS_KEY_ID` | AWS access key | - | Yes |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | - | Yes |
+| `AWS_S3_BUCKET` | S3 bucket name | - | Yes |
 
-## Frontend Integration
+## Features Implemented
 
-### Example: Fetching Asset Status
+- ✅ PostgreSQL database integration with GORM
+- ✅ AWS S3 file upload and storage
+- ✅ Multipart form data handling
+- ✅ Asset metadata persistence
+- ✅ File type validation (images and videos)
+- ✅ Unique file naming with UUID
+- ✅ Pagination support
+- ✅ CRUD operations for assets
+- ✅ Health check endpoint
+- ✅ CORS support
+- ✅ Environment-based configuration
+- ✅ Graceful S3 initialization (optional)
+- ✅ Transaction rollback on failures
+- ✅ Asset status tracking (uploaded/processed)
+- ✅ Status update endpoint
 
-When an asset page is opened in the frontend, use the status endpoint to check if processing is complete:
+## Security Best Practices
 
-```javascript
-// Example JavaScript code for frontend
-async function checkAssetStatus(assetId) {
-  try {
-    const response = await fetch(`http://localhost:8080/api/assets/${assetId}/status`);
-    const data = await response.json();
-    
-    if (data.status === 'processed') {
-      console.log('Asset is ready:', data.file_url);
-      // Display the processed asset
-    } else if (data.status === 'processing') {
-      console.log('Asset is still processing, checking again in 5 seconds...');
-      // Poll again after a delay
-      setTimeout(() => checkAssetStatus(assetId), 5000);
-    }
-  } catch (error) {
-    console.error('Failed to fetch asset status:', error);
-  }
-}
-
-// Usage
-checkAssetStatus('20231012150405');
-```
+1. **Never commit credentials** - `.env` file is in `.gitignore`
+2. **Use IAM roles** in production instead of access keys
+3. **Rotate credentials regularly**
+4. **Use minimal IAM permissions** - only grant necessary S3 access
+5. **Enable SSL/TLS** for database connections in production
+6. **Validate file types and sizes** before upload
+7. **Use presigned URLs** for temporary file access
 
 ## Troubleshooting
 
@@ -394,7 +517,18 @@ psql -U postgres -h localhost
 
 4. Ensure the database user has proper permissions
 
-5. The application will fall back to in-memory storage if database connection fails
+5. Verify SSL mode matches your PostgreSQL configuration
+
+### S3 Upload Issues
+
+**Error: "S3 client is not initialized"**
+- Solution: Verify all AWS environment variables are set correctly
+
+**Error: "failed to upload to S3: AccessDenied"**
+- Solution: Check IAM user permissions for S3 bucket access
+
+**Error: "failed to upload to S3: NoSuchBucket"**
+- Solution: Ensure the S3 bucket exists and the name is correct
 
 ### Common Errors
 
@@ -406,6 +540,9 @@ psql -U postgres -h localhost
 
 **Error: "connection refused"**
 - Solution: Ensure PostgreSQL is running and accessible on the specified host/port
+
+**Error: "invalid file type"**
+- Solution: Only images (JPEG, PNG, GIF, WebP) and videos (MP4, MPEG, QuickTime, AVI, WebM) are supported
 
 ## Contributing
 

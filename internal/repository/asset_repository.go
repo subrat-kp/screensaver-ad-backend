@@ -54,3 +54,8 @@ func (r *AssetRepository) Count() (int64, error) {
 	err := r.db.Model(&models.Asset{}).Count(&count).Error
 	return count, err
 }
+
+// UpdateStatus updates only the status field of an asset
+func (r *AssetRepository) UpdateStatus(id uint, status models.AssetStatus) error {
+	return r.db.Model(&models.Asset{}).Where("id = ?", id).Update("status", status).Error
+}

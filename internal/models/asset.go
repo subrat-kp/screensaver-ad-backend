@@ -6,6 +6,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// AssetStatus represents the processing status of an asset
+type AssetStatus string
+
+const (
+	AssetStatusUploaded  AssetStatus = "uploaded"
+	AssetStatusProcessed AssetStatus = "processed"
+)
+
 // Asset represents the asset metadata model
 type Asset struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
@@ -14,6 +22,7 @@ type Asset struct {
 	ContentType string         `gorm:"size:100;not null" json:"content_type"`
 	S3Key       string         `gorm:"size:500;not null;unique" json:"s3_key"`
 	S3Bucket    string         `gorm:"size:255;not null" json:"s3_bucket"`
+	Status      AssetStatus    `gorm:"size:50;not null;default:'uploaded'" json:"status"`
 	UploadedAt  time.Time      `gorm:"autoCreateTime" json:"uploaded_at"`
 	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updated_at"`

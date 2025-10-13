@@ -20,13 +20,13 @@ func main() {
 	// Load .env only in development environment
 	env := os.Getenv("GO_ENV")
 	env = strings.ToLower(env)
-    if env == "development" || env == "dev" {
-        if err := godotenv.Load(); err != nil {
-            log.Printf("Warning: Error loading .env file: %v", err)
-        } else {
-            log.Println(".env file loaded for development environment")
-        }
-    }
+	if env == "development" || env == "dev" {
+		if err := godotenv.Load(); err != nil {
+			log.Printf("Warning: Error loading .env file: %v", err)
+		} else {
+			log.Println(".env file loaded for development environment")
+		}
+	}
 
 	// Initialize database
 	if err := config.InitDatabase(); err != nil {
@@ -56,7 +56,7 @@ func main() {
 	// CORS middleware
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -82,6 +82,7 @@ func main() {
 			assets.POST("", assetController.CreateAsset)
 			assets.GET("/:id", assetController.GetAsset)
 			assets.PUT("/:id", assetController.UpdateAsset)
+			assets.PATCH("/:id/status", assetController.UpdateAssetStatus)
 			assets.DELETE("/:id", assetController.DeleteAsset)
 		}
 	}
