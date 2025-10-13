@@ -81,6 +81,7 @@ func main() {
 			assets.GET("", assetController.ListAssets)
 			assets.POST("", assetController.CreateAsset)
 			assets.GET("/:id", assetController.GetAsset)
+			assets.GET("/:id/url", assetController.GetAssetURL)
 			assets.PUT("/:id", assetController.UpdateAsset)
 			assets.PATCH("/:id/status", assetController.UpdateAssetStatus)
 			assets.DELETE("/:id", assetController.DeleteAsset)

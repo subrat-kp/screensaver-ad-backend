@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"mime/multipart"
+	"time"
 
 	"screensaver-ad-backend/config"
 	"screensaver-ad-backend/internal/models"
@@ -129,4 +130,26 @@ func (s *AssetService) DeleteAsset(id uint) error {
 // GetAssetCount returns the total number of assets
 func (s *AssetService) GetAssetCount() (int64, error) {
 	return s.repo.Count()
+}
+
+// GetAssetURL generates a presigned URL for accessing an asset
+func (s *AssetService) GetAssetURL(id uint, expirationMinutes int) (string, error) {
+	// Get asset
+	asset, err := s.repo.GetByID(id)
+	if err != nil {
+		return "", fmt.Errorf("asset not found")
+	}
+
+	// Default expiration to 60 minutes if not specified
+	if expirationMinutes <= 0 {
+		expirationMinutes = 60
+	}
+
+	// Generate presigned URL
+	url, err := s.s3Service.GetFileURL(asset.S3Key, time.Duration(expirationMinutes)*time.Minute)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate URL: %w", err)
+	}
+
+	return url, nil
 }

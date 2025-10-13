@@ -166,3 +166,27 @@ func (c *AssetController) UpdateAssetStatus(ctx *gin.Context) {
 		"asset":   asset,
 	})
 }
+
+// GetAssetURL handles GET /assets/:id/url
+func (c *AssetController) GetAssetURL(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	// Get expiration from query parameter (default 60 minutes)
+	expiration, _ := strconv.Atoi(ctx.DefaultQuery("expiration", "60"))
+
+	// Generate presigned URL
+	url, err := c.service.GetAssetURL(uint(id), expiration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"url":        url,
+		"expires_in": expiration,
+	})
+}
