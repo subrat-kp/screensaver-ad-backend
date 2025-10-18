@@ -44,7 +44,7 @@ func (s *AssetService) CreateAssetWithUpload(file multipart.File, fileHeader *mu
 	}
 
 	// Upload to S3
-	s3Key, err := s.s3Service.UploadFileToS3(file, fileHeader, name)
+	s3Key, err := s.s3Service.UploadFileToS3(file, fileHeader, name, "input")
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload file: %w", err)
 	}

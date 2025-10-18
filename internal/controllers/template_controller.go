@@ -35,7 +35,7 @@ func (tc *TemplateController) UploadTemplate(c *gin.Context) {
 	}
 	defer fileObj.Close()
 
-	s3Key, err := tc.s3Service.UploadFileToS3(fileObj, file, name)
+	s3Key, err := tc.s3Service.UploadFileToS3(fileObj, file, name, "template")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload to S3"})
 		return

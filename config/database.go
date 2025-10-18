@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"screensaver-ad-backend/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,6 +42,12 @@ func InitDatabase() error {
 	}
 
 	log.Println("Database connection established successfully")
+
+	// Migrate the schema
+	err = DB.AutoMigrate(&models.Asset{})
+	err = DB.AutoMigrate(&models.Template{})
+	log.Println("Database migration successful")
+
 	return nil
 }
 

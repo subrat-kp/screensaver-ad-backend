@@ -31,7 +31,7 @@ func NewS3Service() *S3Service {
 }
 
 // UploadFileToS3 uploads a file to S3 and returns the S3 key
-func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.FileHeader, customName string) (string, error) {
+func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.FileHeader, customName string, folder string) (string, error) {
 	if s.Client == nil {
 		return "", fmt.Errorf("S3 client is not initialized")
 	}
@@ -55,7 +55,7 @@ func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.Fi
 	}
 
 	// S3 key with input folder
-	s3Key := fmt.Sprintf("input/%s", fileName)
+	s3Key := fmt.Sprintf("%s/%s", folder, fileName)
 
 	// Prepare upload input
 	uploadInput := &s3.PutObjectInput{
