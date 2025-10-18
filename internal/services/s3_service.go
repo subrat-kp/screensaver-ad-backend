@@ -18,21 +18,21 @@ import (
 
 // S3Service handles S3 operations
 type S3Service struct {
-	client *s3.S3
-	bucket string
+	Client *s3.S3
+	Bucket string
 }
 
 // NewS3Service creates a new S3 service instance
 func NewS3Service() *S3Service {
 	return &S3Service{
-		client: config.GetS3Client(),
-		bucket: config.GetS3Bucket(),
+		Client: config.GetS3Client(),
+		Bucket: config.GetS3Bucket(),
 	}
 }
 
 // UploadFileToS3 uploads a file to S3 and returns the S3 key
 func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.FileHeader, customName string) (string, error) {
-	if s.client == nil {
+	if s.Client == nil {
 		return "", fmt.Errorf("S3 client is not initialized")
 	}
 
@@ -59,14 +59,14 @@ func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.Fi
 
 	// Prepare upload input
 	uploadInput := &s3.PutObjectInput{
-		Bucket:      aws.String(s.bucket),
+		Bucket:      aws.String(s.Bucket),
 		Key:         aws.String(s3Key),
 		Body:        bytes.NewReader(fileBytes),
 		ContentType: aws.String(fileHeader.Header.Get("Content-Type")),
 	}
 
 	// Upload to S3
-	_, err = s.client.PutObject(uploadInput)
+	_, err = s.Client.PutObject(uploadInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
@@ -76,16 +76,16 @@ func (s *S3Service) UploadFileToS3(file multipart.File, fileHeader *multipart.Fi
 
 // DeleteFileFromS3 deletes a file from S3
 func (s *S3Service) DeleteFileFromS3(s3Key string) error {
-	if s.client == nil {
+	if s.Client == nil {
 		return fmt.Errorf("S3 client is not initialized")
 	}
 
 	deleteInput := &s3.DeleteObjectInput{
-		Bucket: aws.String(s.bucket),
+		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(s3Key),
 	}
 
-	_, err := s.client.DeleteObject(deleteInput)
+	_, err := s.Client.DeleteObject(deleteInput)
 	if err != nil {
 		return fmt.Errorf("failed to delete from S3: %w", err)
 	}
@@ -95,12 +95,12 @@ func (s *S3Service) DeleteFileFromS3(s3Key string) error {
 
 // GetFileURL generates a presigned URL for accessing the file
 func (s *S3Service) GetFileURL(s3Key string, expiration time.Duration) (string, error) {
-	if s.client == nil {
+	if s.Client == nil {
 		return "", fmt.Errorf("S3 client is not initialized")
 	}
 
-	req, _ := s.client.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(s.bucket),
+	req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(s3Key),
 	})
 

@@ -50,6 +50,12 @@ func main() {
 	assetService := services.NewAssetService(assetRepo)
 	assetController := controllers.NewAssetController(assetService)
 
+	s3Service := services.NewS3Service()
+
+	templateRepo := repository.NewTemplateRepository(db)
+	templateService := services.NewTemplateService(templateRepo)
+	templateController := controllers.NewTemplateController(templateService, s3Service)
+
 	// Setup Gin router
 	router := gin.Default()
 
@@ -85,6 +91,12 @@ func main() {
 			assets.PUT("/:id", assetController.UpdateAsset)
 			assets.PATCH("/:id/status", assetController.UpdateAssetStatus)
 			assets.DELETE("/:id", assetController.DeleteAsset)
+		}
+
+		templates := api.Group("/templates")
+		{
+			templates.GET("", templateController.ListTemplates)
+			templates.POST("", templateController.UploadTemplate)
 		}
 	}
 
