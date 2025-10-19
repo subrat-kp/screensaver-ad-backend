@@ -1,0 +1,370 @@
+basePath: /api
+definitions:
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.Asset:
+    properties:
+      content_type:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      id:
+        type: integer
+      output_s3_key:
+        type: string
+      processed_at:
+        type: string
+      s3_bucket:
+        type: string
+      s3_key:
+        type: string
+      status:
+        $ref: '#/definitions/models.AssetStatus'
+      updated_at:
+        type: string
+      uploaded_at:
+        type: string
+    type: object
+  models.AssetStatus:
+    enum:
+    - uploaded
+    - processed
+    type: string
+    x-enum-varnames:
+    - AssetStatusUploaded
+    - AssetStatusProcessed
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+    url: https://github.com/subrat-kp/screensaver-ad-backend
+  description: API server for managing screensaver advertisements, assets, and templates
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Screensaver Ad Backend API
+  version: "1.0"
+paths:
+  /assets:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of all assets
+      parameters:
+      - default: 10
+        description: Limit number of results
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of assets with pagination info
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all assets
+      tags:
+      - assets
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a new asset file with metadata
+      parameters:
+      - description: Asset file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Asset name (defaults to filename)
+        in: formData
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Asset created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new asset
+      tags:
+      - assets
+  /assets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an asset by its ID
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Asset deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete an asset
+      tags:
+      - assets
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific asset by its ID
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Asset'
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Asset not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get asset by ID
+      tags:
+      - assets
+    put:
+      consumes:
+      - application/json
+      description: Update an existing asset's information
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Asset object
+        in: body
+        name: asset
+        required: true
+        schema:
+          $ref: '#/definitions/models.Asset'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Asset'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update an asset
+      tags:
+      - assets
+  /assets/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the status of an asset (pending, processing, completed,
+        failed)
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update request
+        in: body
+        name: status
+        required: true
+        schema:
+          properties:
+            output_s3_key:
+              type: string
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Asset status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update asset status
+      tags:
+      - assets
+  /assets/{id}/url:
+    get:
+      consumes:
+      - application/json
+      description: Generate presigned URLs for both input and output asset files
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 60
+        description: URL expiration time in minutes
+        in: query
+        name: expiration
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Presigned URLs for input and output files
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get asset URLs
+      tags:
+      - assets
+  /templates:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all templates with presigned URLs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of templates with URLs
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all templates
+      tags:
+      - templates
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a template video file with a name
+      parameters:
+      - description: Template name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Template video file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Template uploaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Upload a new template
+      tags:
+      - templates
+schemes:
+- http
+- https
+swagger: "2.0"

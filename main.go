@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"screensaver-ad-backend/config"
+	_ "screensaver-ad-backend/docs" // Import generated docs
 	"screensaver-ad-backend/internal/controllers"
 	"screensaver-ad-backend/internal/models"
 	"screensaver-ad-backend/internal/repository"
@@ -14,7 +15,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	swaggerFiles "github.com/swaggo/files"
 )
+
+// @title Screensaver Ad Backend API
+// @version 1.0
+// @description API server for managing screensaver advertisements, assets, and templates
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url https://github.com/subrat-kp/screensaver-ad-backend
+// @contact.email support@example.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api
+// @schemes http https
 
 func main() {
 	// Load .env only in development environment
@@ -40,7 +59,7 @@ func main() {
 
 	// Auto-migrate database models
 	db := config.GetDB()
-	if err := db.AutoMigrate(&models.Asset{}); err != nil {
+	if err := db.AutoMigrate(models.Models()...); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 	log.Println("Database migration completed successfully")
@@ -100,7 +119,11 @@ func main() {
 		}
 	}
 
+	// Swagger documentation route
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	log.Println("Server starting on :8080")
+	log.Println("Swagger documentation available at http://localhost:8080/swagger/index.html")
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

@@ -21,6 +21,17 @@ func NewAssetController(service *services.AssetService) *AssetController {
 }
 
 // CreateAsset handles POST /assets with file upload
+// @Summary Create a new asset
+// @Description Upload a new asset file with metadata
+// @Tags assets
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Asset file"
+// @Param name formData string false "Asset name (defaults to filename)"
+// @Success 201 {object} map[string]interface{} "Asset created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets [post]
 func (c *AssetController) CreateAsset(ctx *gin.Context) {
 	// Parse multipart form
 	if err := ctx.Request.ParseMultipartForm(32 << 20); err != nil { // 32 MB max
@@ -57,6 +68,16 @@ func (c *AssetController) CreateAsset(ctx *gin.Context) {
 }
 
 // GetAsset handles GET /assets/:id
+// @Summary Get asset by ID
+// @Description Retrieve a specific asset by its ID
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Success 200 {object} models.Asset
+// @Failure 400 {object} map[string]interface{} "Invalid ID"
+// @Failure 404 {object} map[string]interface{} "Asset not found"
+// @Router /assets/{id} [get]
 func (c *AssetController) GetAsset(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
@@ -74,6 +95,16 @@ func (c *AssetController) GetAsset(ctx *gin.Context) {
 }
 
 // ListAssets handles GET /assets
+// @Summary List all assets
+// @Description Get a paginated list of all assets
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit number of results" default(10)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Success 200 {object} map[string]interface{} "List of assets with pagination info"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets [get]
 func (c *AssetController) ListAssets(ctx *gin.Context) {
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
@@ -94,6 +125,17 @@ func (c *AssetController) ListAssets(ctx *gin.Context) {
 }
 
 // UpdateAsset handles PUT /assets/:id
+// @Summary Update an asset
+// @Description Update an existing asset's information
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Param asset body models.Asset true "Asset object"
+// @Success 200 {object} models.Asset
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets/{id} [put]
 func (c *AssetController) UpdateAsset(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
@@ -117,6 +159,16 @@ func (c *AssetController) UpdateAsset(ctx *gin.Context) {
 }
 
 // DeleteAsset handles DELETE /assets/:id
+// @Summary Delete an asset
+// @Description Delete an asset by its ID
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Success 200 {object} map[string]interface{} "Asset deleted successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid ID"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets/{id} [delete]
 func (c *AssetController) DeleteAsset(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
@@ -133,6 +185,17 @@ func (c *AssetController) DeleteAsset(ctx *gin.Context) {
 }
 
 // UpdateAssetStatus handles PATCH /assets/:id/status
+// @Summary Update asset status
+// @Description Update the status of an asset (pending, processing, completed, failed)
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Param status body object{status=string,output_s3_key=string} true "Status update request"
+// @Success 200 {object} map[string]interface{} "Asset status updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets/{id}/status [patch]
 func (c *AssetController) UpdateAssetStatus(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
@@ -169,6 +232,17 @@ func (c *AssetController) UpdateAssetStatus(ctx *gin.Context) {
 }
 
 // GetAssetURL handles GET /assets/:id/url
+// @Summary Get asset URLs
+// @Description Generate presigned URLs for both input and output asset files
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Param expiration query int false "URL expiration time in minutes" default(60)
+// @Success 200 {object} map[string]interface{} "Presigned URLs for input and output files"
+// @Failure 400 {object} map[string]interface{} "Invalid ID"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /assets/{id}/url [get]
 func (c *AssetController) GetAssetURL(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {

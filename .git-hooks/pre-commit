@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Pre-commit hook to automatically regenerate Swagger documentation
+# when controller files are modified
+
+# Check if any controller files were modified
+CONTROLLER_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E 'internal/controllers/.*\.go$|main\.go$')
+
+if [ -n "$CONTROLLER_FILES" ]; then
+    echo "Controller files modified, regenerating Swagger documentation..."
+
+    # Add Go bin to PATH
+    export PATH=$(go env GOPATH)/bin:$PATH
+
+    # Generate swagger docs
+    swag init --parseDependency --parseInternal
+
+    if [ $? -eq 0 ]; then
+        echo "✓ Swagger documentation regenerated successfully!"
+
+        # Add the generated docs to the commit
+        git add docs/
+
+        echo "✓ Generated docs added to commit"
+    else
+        echo "✗ Failed to generate Swagger documentation"
+        exit 1
+    fi
+fi
+
+exit 0

@@ -13,6 +13,7 @@ A Go backend service using the Gin framework for managing screensaver advertisem
 - Health check endpoint with database status
 - CORS support for frontend integration
 - Environment-based configuration with .env support
+- **Automatic Swagger/OpenAPI documentation generation**
 
 ## Tech Stack
 
@@ -31,22 +32,166 @@ A Go backend service using the Gin framework for managing screensaver advertisem
 ├── config/
 │   ├── database.go      # Database configuration and initialization
 │   └── s3.go           # S3 client configuration
+├── docs/               # Auto-generated Swagger documentation
+│   ├── docs.go         # Go swagger definitions
+│   ├── swagger.json    # OpenAPI JSON spec
+│   └── swagger.yaml    # OpenAPI YAML spec
 ├── internal/
 │   ├── controllers/
-│   │   └── asset_controller.go  # HTTP request handlers
+│   │   ├── asset_controller.go     # HTTP request handlers (with Swagger annotations)
+│   │   └── template_controller.go  # Template handlers (with Swagger annotations)
 │   ├── models/
-│   │   └── asset.go            # Asset data model
+│   │   ├── asset.go            # Asset data model
+│   │   └── template.go         # Template data model
 │   ├── repository/
-│   │   └── asset_repository.go # Database operations
+│   │   ├── asset_repository.go    # Database operations
+│   │   └── template_repository.go
 │   └── services/
 │       ├── asset_service.go    # Business logic
-│       └── s3_service.go       # S3 operations
-├── main.go             # Application entry point
+│       ├── s3_service.go       # S3 operations
+│       └── template_service.go
+├── .git-hooks/
+│   └── pre-commit      # Auto-regenerate docs on commit
+├── main.go             # Application entry point (with Swagger config)
+├── Makefile            # Build automation and doc generation
 ├── go.mod              # Go module dependencies
 ├── .env.example        # Environment variables template
 ├── Dockerfile          # Docker configuration
 └── README.md           # Project documentation
 ```
+
+## API Documentation with Swagger
+
+This project includes **automatic Swagger/OpenAPI documentation** that is generated from code annotations. The documentation is interactive and allows you to test API endpoints directly from the browser.
+
+### Accessing the Documentation
+
+Once the server is running, access the Swagger UI at:
+
+```
+http://localhost:8080/swagger/index.html
+```
+
+### Swagger Documentation Files
+
+The documentation is stored in the `docs/` folder with three formats:
+- **docs.go** - Go code with embedded documentation
+- **swagger.json** - OpenAPI 3.0 JSON specification
+- **swagger.yaml** - OpenAPI 3.0 YAML specification
+
+### Generating Documentation
+
+The Swagger documentation is **automatically generated** from code annotations. There are several ways to regenerate it:
+
+#### Using Make Commands
+
+```bash
+# Generate Swagger documentation
+make swagger
+# or
+make docs
+
+# Generate docs and run the server
+make run-with-docs
+```
+
+#### Manual Generation
+
+```bash
+# Make sure swag is in your PATH
+export PATH=$(go env GOPATH)/bin:$PATH
+
+# Generate documentation
+swag init --parseDependency --parseInternal
+```
+
+### Automatic Documentation Generation
+
+#### Git Pre-Commit Hook
+
+A Git pre-commit hook is included that **automatically regenerates** the documentation when you modify controller files or main.go:
+
+1. Install the hook (one-time setup):
+```bash
+# Copy the hook to .git/hooks/
+cp .git-hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+2. Now, whenever you commit changes to controllers or main.go, the documentation will be regenerated automatically and included in your commit.
+
+### Adding Documentation to New Endpoints
+
+When you add or modify an endpoint, add Swagger annotations above the handler function:
+
+```go
+// @Summary Create a new resource
+// @Description Create a new resource with the provided data
+// @Tags resources
+// @Accept json
+// @Produce json
+// @Param resource body models.Resource true "Resource object"
+// @Success 201 {object} models.Resource "Resource created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /resources [post]
+func (c *Controller) CreateResource(ctx *gin.Context) {
+    // Handler implementation
+}
+```
+
+#### Common Swagger Annotations
+
+- `@Summary` - Brief description of the endpoint
+- `@Description` - Detailed description
+- `@Tags` - Group endpoints by tags (e.g., assets, templates)
+- `@Accept` - Content type the endpoint accepts (json, multipart/form-data)
+- `@Produce` - Content type the endpoint produces (json, xml)
+- `@Param` - Parameter definition (query, path, body, formData)
+- `@Success` - Success response definition
+- `@Failure` - Error response definition
+- `@Router` - Route path and HTTP method
+
+#### Parameter Types
+
+```go
+// Path parameter
+// @Param id path int true "Resource ID"
+
+// Query parameter
+// @Param limit query int false "Limit" default(10)
+
+// JSON body
+// @Param resource body models.Resource true "Resource object"
+
+// Form data
+// @Param file formData file true "File to upload"
+// @Param name formData string false "Resource name"
+```
+
+### Make Commands Reference
+
+```bash
+make swagger         # Generate Swagger documentation
+make docs            # Alias for 'make swagger'
+make run             # Run the application
+make run-dev         # Run the application in development environment
+make run-with-docs   # Generate docs and run the application
+make test            # Run tests
+make clean           # Remove generated documentation files
+make install-swag    # Install swag CLI tool
+make help            # Show all available commands
+```
+
+### Best Practices
+
+1. **Always regenerate docs** after modifying endpoints
+2. **Run `make swagger`** before committing changes
+3. **Use descriptive summaries** for each endpoint
+4. **Group related endpoints** using the same `@Tags`
+5. **Document all parameters** with proper types and descriptions
+6. **Include example responses** in your annotations
+7. **Keep annotations up-to-date** with code changes
 
 ## Database Setup
 
@@ -70,7 +215,9 @@ CREATE DATABASE screensaver_ad;
 
 ### 2. Database Schema
 
-The application automatically creates the `asset_metadata` table on startup using GORM migrations:
+The application automatically creates the following tables on startup using GORM migrations:
+
+#### Asset Metadata Table
 
 ```sql
 CREATE TABLE asset_metadata (
@@ -87,6 +234,22 @@ CREATE TABLE asset_metadata (
     deleted_at TIMESTAMP
 );
 ```
+
+#### Template Metadata Table
+
+```sql
+CREATE TABLE template_metadata (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    s3_key VARCHAR(500) NOT NULL UNIQUE,
+    s3_bucket VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP
+);
+```
+
+Both tables are created automatically when the application starts, using GORM's `AutoMigrate` feature.
 
 ### 3. Environment Variables
 

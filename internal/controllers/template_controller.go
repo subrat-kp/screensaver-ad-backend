@@ -20,6 +20,17 @@ func NewTemplateController(service *services.TemplateService, s3Service *service
 }
 
 // UploadTemplate handles uploading a template video and name
+// @Summary Upload a new template
+// @Description Upload a template video file with a name
+// @Tags templates
+// @Accept multipart/form-data
+// @Produce json
+// @Param name formData string true "Template name"
+// @Param file formData file true "Template video file"
+// @Success 200 {object} map[string]interface{} "Template uploaded successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /templates [post]
 func (tc *TemplateController) UploadTemplate(c *gin.Context) {
 	name := c.PostForm("name")
 	file, err := c.FormFile("file")
@@ -55,6 +66,14 @@ func (tc *TemplateController) UploadTemplate(c *gin.Context) {
 }
 
 // ListTemplates returns all templates with presigned URLs
+// @Summary List all templates
+// @Description Get a list of all templates with presigned URLs
+// @Tags templates
+// @Accept json
+// @Produce json
+// @Success 200 {array} map[string]interface{} "List of templates with URLs"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /templates [get]
 func (tc *TemplateController) ListTemplates(c *gin.Context) {
 	templates, err := tc.service.ListTemplates()
 	if err != nil {
