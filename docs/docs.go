@@ -268,7 +268,7 @@ const docTemplate = `{
         },
         "/assets/{id}/status": {
             "patch": {
-                "description": "Update the status of an asset (pending, processing, completed, failed)",
+                "description": "Update the status of an asset (uploaded, processed, upload_failed, process_failed) and the output url",
                 "consumes": [
                     "application/json"
                 ],
@@ -278,7 +278,7 @@ const docTemplate = `{
                 "tags": [
                     "assets"
                 ],
-                "summary": "Update asset status",
+                "summary": "Update asset status and the output url",
                 "parameters": [
                     {
                         "type": "integer",
@@ -532,11 +532,15 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "uploaded",
-                "processed"
+                "processed",
+                "process_failed",
+                "upload_failed"
             ],
             "x-enum-varnames": [
                 "AssetStatusUploaded",
-                "AssetStatusProcessed"
+                "AssetStatusProcessed",
+                "AssetStatusProcessFailed",
+                "AssetStatusUploadFailed"
             ]
         }
     }

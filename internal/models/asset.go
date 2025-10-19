@@ -10,8 +10,10 @@ import (
 type AssetStatus string
 
 const (
-	AssetStatusUploaded  AssetStatus = "uploaded"
-	AssetStatusProcessed AssetStatus = "processed"
+	AssetStatusUploaded      AssetStatus = "uploaded"
+	AssetStatusProcessed     AssetStatus = "processed"
+	AssetStatusProcessFailed AssetStatus = "process_failed"
+	AssetStatusUploadFailed  AssetStatus = "upload_failed"
 )
 
 // Asset represents the asset metadata model

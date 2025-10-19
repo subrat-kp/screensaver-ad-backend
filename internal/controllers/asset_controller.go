@@ -185,8 +185,8 @@ func (c *AssetController) DeleteAsset(ctx *gin.Context) {
 }
 
 // UpdateAssetStatus handles PATCH /assets/:id/status
-// @Summary Update asset status
-// @Description Update the status of an asset (pending, processing, completed, failed)
+// @Summary Update asset status and the output url
+// @Description Update the status of an asset (uploaded, processed, upload_failed, process_failed) and the output url
 // @Tags assets
 // @Accept json
 // @Produce json

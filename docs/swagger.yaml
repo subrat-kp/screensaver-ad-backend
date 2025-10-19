@@ -41,10 +41,14 @@ definitions:
     enum:
     - uploaded
     - processed
+    - process_failed
+    - upload_failed
     type: string
     x-enum-varnames:
     - AssetStatusUploaded
     - AssetStatusProcessed
+    - AssetStatusProcessFailed
+    - AssetStatusUploadFailed
 host: localhost:8080
 info:
   contact:
@@ -228,8 +232,8 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Update the status of an asset (pending, processing, completed,
-        failed)
+      description: Update the status of an asset (uploaded, processed, upload_failed,
+        process_failed) and the output url
       parameters:
       - description: Asset ID
         in: path
@@ -265,7 +269,7 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Update asset status
+      summary: Update asset status and the output url
       tags:
       - assets
   /assets/{id}/url:

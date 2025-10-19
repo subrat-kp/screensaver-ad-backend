@@ -88,6 +88,7 @@ func (tc *TemplateController) ListTemplates(c *gin.Context) {
 			url = ""
 		}
 		result = append(result, gin.H{
+			"id":   t.ID,
 			"name": t.Name,
 			"url":  url,
 		})
