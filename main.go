@@ -117,6 +117,11 @@ func main() {
 			templates.GET("", templateController.ListTemplates)
 			templates.POST("", templateController.UploadTemplate)
 		}
+
+		tasks := api.Group("/tasks")
+		{
+			tasks.POST("", )
+		}
 	}
 
 	// Swagger documentation route

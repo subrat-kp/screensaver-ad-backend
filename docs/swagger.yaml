@@ -309,6 +309,52 @@ paths:
       summary: Get asset URLs
       tags:
       - assets
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Create a new task if no record exists with same asset and template
+        IDs
+      parameters:
+      - description: Task object
+        in: body
+        name: task
+        required: true
+        schema:
+          properties:
+            asset_id:
+              type: integer
+            output_s3_key:
+              type: string
+            template_id:
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Task created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "202":
+          description: Task already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new task
+      tags:
+      - tasks
   /templates:
     get:
       consumes:
