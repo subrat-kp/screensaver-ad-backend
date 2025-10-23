@@ -2,6 +2,7 @@ package repository
 
 import (
 	"screensaver-ad-backend/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -58,4 +59,14 @@ func (r *AssetRepository) Count() (int64, error) {
 // UpdateStatus updates only the status field of an asset
 func (r *AssetRepository) UpdateStatus(id uint, status models.AssetStatus) error {
 	return r.db.Model(&models.Asset{}).Where("id = ?", id).Update("status", status).Error
+}
+
+// UpdateOutputS3Key updates the output_s3_key and processed_at fields of an asset
+func (r *AssetRepository) UpdateOutputS3Key(id uint, outputS3Key string) error {
+	now := time.Now()
+	return r.db.Model(&models.Asset{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"output_s3_key": outputS3Key,
+		"processed_at":  &now,
+		"status":        models.AssetStatusProcessed,
+	}).Error
 }

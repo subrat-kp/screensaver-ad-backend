@@ -324,8 +324,8 @@ paths:
           properties:
             asset_id:
               type: integer
-            output_s3_key:
-              type: string
+            metadata:
+              type: object
             template_id:
               type: integer
           type: object
@@ -414,6 +414,44 @@ paths:
       summary: Upload a new template
       tags:
       - templates
+  /webhook:
+    post:
+      consumes:
+      - application/json
+      description: Process webhook events with flexible payload structure
+      parameters:
+      - description: Webhook event with payload
+        in: body
+        name: event
+        required: true
+        schema:
+          properties:
+            event_type:
+              type: string
+            payload:
+              type: object
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event processed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Handle webhook events
+      tags:
+      - webhook
 schemes:
 - http
 - https

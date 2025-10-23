@@ -30,3 +30,18 @@ func (r *TaskRepository) FindByAssetAndTemplate(assetID, templateID uint) (*mode
 	}
 	return &task, nil
 }
+
+// GetByIDWithAsset retrieves a task by ID with its associated asset
+func (r *TaskRepository) GetByIDWithAsset(id uint) (*models.Task, error) {
+	var task models.Task
+	err := r.db.Preload("Asset").First(&task, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+// Update updates a task record
+func (r *TaskRepository) Update(task *models.Task) error {
+	return r.db.Save(task).Error
+}

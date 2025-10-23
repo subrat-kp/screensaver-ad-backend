@@ -24,7 +24,7 @@ func NewTaskController(service *services.TaskService) *TaskController {
 // @Tags tasks
 // @Accept json
 // @Produce json
-// @Param task body object{template_id=uint,asset_id=uint,output_s3_key=string} true "Task object"
+// @Param task body object{template_id=uint,asset_id=uint,metadata=object} true "Task object"
 // @Success 201 {object} map[string]interface{} "Task created successfully"
 // @Success 202 {object} map[string]interface{} "Task already exists"
 // @Failure 400 {object} map[string]interface{} "Bad request"
@@ -32,9 +32,9 @@ func NewTaskController(service *services.TaskService) *TaskController {
 // @Router /tasks [post]
 func (c *TaskController) CreateTask(ctx *gin.Context) {
 	var request struct {
-		TemplateID  uint    `json:"template_id" binding:"required"`
-		AssetID     uint    `json:"asset_id" binding:"required"`
-		OutputS3Key *string `json:"output_s3_key,omitempty"`
+		TemplateID uint                   `json:"template_id" binding:"required"`
+		AssetID    uint                   `json:"asset_id" binding:"required"`
+		Metadata   map[string]interface{} `json:"metadata,omitempty"`
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -43,9 +43,9 @@ func (c *TaskController) CreateTask(ctx *gin.Context) {
 	}
 
 	task := &models.Task{
-		TemplateID:  request.TemplateID,
-		AssetID:     request.AssetID,
-		OutputS3Key: request.OutputS3Key,
+		TemplateID: request.TemplateID,
+		AssetID:    request.AssetID,
+		Metadata:   request.Metadata,
 	}
 
 	created, err := c.service.CreateTaskIfNotExists(task)

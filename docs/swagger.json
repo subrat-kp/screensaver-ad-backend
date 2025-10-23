@@ -407,8 +407,8 @@
                                 "asset_id": {
                                     "type": "integer"
                                 },
-                                "output_s3_key": {
-                                    "type": "string"
+                                "metadata": {
+                                    "type": "object"
                                 },
                                 "template_id": {
                                     "type": "integer"
@@ -513,6 +513,63 @@
                 "responses": {
                     "200": {
                         "description": "Template uploaded successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/webhook": {
+            "post": {
+                "description": "Process webhook events with flexible payload structure",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhook"
+                ],
+                "summary": "Handle webhook events",
+                "parameters": [
+                    {
+                        "description": "Webhook event with payload",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "event_type": {
+                                    "type": "string"
+                                },
+                                "payload": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Event processed successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true

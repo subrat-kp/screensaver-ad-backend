@@ -75,6 +75,12 @@ func main() {
 	templateService := services.NewTemplateService(templateRepo)
 	templateController := controllers.NewTemplateController(templateService, s3Service)
 
+	taskRepo := repository.NewTaskRepository(db)
+	taskService := services.NewTaskService(taskRepo, assetRepo)
+	taskController := controllers.NewTaskController(taskService)
+
+	webhookController := controllers.NewWebhookController(taskService, assetService)
+
 	// Setup Gin router
 	router := gin.Default()
 
@@ -120,8 +126,11 @@ func main() {
 
 		tasks := api.Group("/tasks")
 		{
-			tasks.POST("", )
+			tasks.POST("", taskController.CreateTask)
 		}
+
+		// Webhook endpoint
+		api.POST("/webhook", webhookController.HandleWebhook)
 	}
 
 	// Swagger documentation route
